@@ -14,7 +14,6 @@ from skimage import measure, img_as_ubyte
 
 image_path_annon = './data/Image/' # Image Directory
 mask_path_annon =  './data/Mask/' # Binary Mark Directory
-image_path_clean = './data/Clean/Image/' # Only Required If Present in Different Directories, Otherwise leave blank
 
 out_path = './data/image_format/' # 2D image slices will be saved here
 if not os.path.exists(out_path):
@@ -38,38 +37,39 @@ annotations = []
 count = 1 # For progress Print
 for i in df.itertuples(index=False):
     print("Processing Annoted Data: ", count, "/", len(df), end = "\r")
-
     count = count + 1
 
-    img = np.load(image_path_annon + str(i[5]) + '.npy')
-    imageio.imwrite(out_path + i[5][15:] + '.jpg', img_as_ubyte(img/max(np.max(img), -1*np.min(img) ) ) )
+    file_name = str(i[5]) # File name attribute
+    mask_name = str(i[6]) # Mask name attribute
+    class_meta = i[7] # Category attribute
+    split = i[11] # Test/Train/Val split attribute
 
 
-    img = np.load(mask_path_annon + str(i[6]) + '.npy')
+    img = np.load(image_path_annon + file_name + '.npy')
+    imageio.imwrite(out_path + file_name[15:] + '.jpg', img_as_ubyte(img/max(np.max(img), -1*np.min(img) ) ) )
 
+    # Binary Mask to COCO
+    img = np.load(mask_path_annon + mask_name) + '.npy')
     ground_truth_binary_mask = img
-
     fortran_ground_truth_binary_mask = np.asfortranarray(ground_truth_binary_mask)
     encoded_ground_truth = mask.encode(fortran_ground_truth_binary_mask)
     ground_truth_area = mask.area(encoded_ground_truth)
     ground_truth_bounding_box = mask.toBbox(encoded_ground_truth)
     contours = measure.find_contours(ground_truth_binary_mask, 0.5)
 
-    name = str(i[5])
-    s_id = int( name[15:19] + name[22:25] + name[31:])
-
+    s_id = int( file_name[15:19] + file_name[22:25] + file_name[31:]) # For unique numerical ID
     image = {
             "id": s_id,
             "width": img.shape[1],
             "height": img.shape[0],
-            "file_name": "{}.jpg".format(str(i[5][15:]))
+            "file_name": "{}.jpg".format(name[15:])
     }
 
+    # Decide final class for annotation
     annon_class = 0
-
-    if i[7] >= 3:
+    if class_meta >= 3:
     	annon_class = 2
-    elif i[7] > 0:
+    elif class_meta > 0:
     	annon_class = 1
 
 
@@ -92,58 +92,23 @@ for i in df.itertuples(index=False):
     if annon_class > 0:
         annotations.append(annotation)
 
-    if i[11] == 'Train':
-    	if(annon_class == 1):
-    		images_train_bn.append(image)
-    	if(annon_class == 2):
-    		images_train_ml.append(image)
-    elif i[11] == 'Test':
-    	  	images_test.append(image)
+    if split == 'Train:
+        images_train.append(image)
+    elif split == 'Test':
+        images_test.append(image)
     else:
-    	if(annon_class == 1):
-    		images_val_bn.append(image)
-    	if(annon_class == 2):
-    		images_val_ml.append(image)
+    	images_val.append(image)
 
 
 # Balancing Malignant and Benign slices for train and val sets
 
-min_cnt = min(len(images_train_ml), len(images_train_bn))
-images_train.extend(images_train_ml[:min_cnt])
-images_train.extend(images_train_bn[:min_cnt])
-
-min_cnt = min(len(images_val_ml), len(images_val_bn))
-images_val.extend(images_val_ml[:min_cnt])
-images_val.extend(images_val_bn[:min_cnt])
-
-
-if(image_path_clean != ''):
-    df = pd.read_csv("./clean_meta.csv") # for Clean data
-    count = 1
-    for i in df.itertuples(index=False):
-        print("Processing Clean Data: ", count, "/", len(df), end = "\r")
-        count = count + 1
-
-        img = np.load(image_path_clean + i[5] + '.npy')
-        imageio.imwrite(out_path + i[5][15:] + '.jpg', img_as_ubyte(img/max(np.max(img), -1*np.min(img) ) ) )
-
-        name = i[5]
-        s_id = int( name[15:19] + name[22:25] + name[31:])
-
-        image = {
-                "id": s_id,
-                "width": img.shape[1],
-                "height": img.shape[0],
-                "file_name": "{}.jpg".format(i[5][15:])
-        }
-
-        if i[11] == 'Train':
-        	images_train.append(image)
-        elif i[11] == 'Validation':
-        	# images_test.append(image)
-        	images_val.append(image)
-        # else:
-        # 	images_val.append(image)
+# min_cnt = min(len(images_train_ml), len(images_train_bn))
+# images_train.extend(images_train_ml[:min_cnt])
+# images_train.extend(images_train_bn[:min_cnt])
+#
+# min_cnt = min(len(images_val_ml), len(images_val_bn))
+# images_val.extend(images_val_ml[:min_cnt])
+# images_val.extend(images_val_bn[:min_cnt])
 
 
 # Dumping Image and annotation data into 3 json files for Train, Validation and Test
