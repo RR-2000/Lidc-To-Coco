@@ -92,7 +92,7 @@ for i in df.itertuples(index=False):
     if annon_class > 0:
         annotations.append(annotation)
 
-    if split == 'Train:
+    if split == 'Train':
         images_train.append(image)
     elif split == 'Test':
         images_test.append(image)
