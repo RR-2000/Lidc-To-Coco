@@ -49,7 +49,7 @@ for i in df.itertuples(index=False):
     imageio.imwrite(out_path + file_name[15:] + '.jpg', img_as_ubyte(img/max(np.max(img), -1*np.min(img) ) ) )
 
     # Binary Mask to COCO
-    img = np.load(mask_path_annon + mask_name) + '.npy')
+    img = np.load((mask_path_annon + mask_name) + '.npy')
     ground_truth_binary_mask = img
     fortran_ground_truth_binary_mask = np.asfortranarray(ground_truth_binary_mask)
     encoded_ground_truth = mask.encode(fortran_ground_truth_binary_mask)
@@ -62,7 +62,7 @@ for i in df.itertuples(index=False):
             "id": s_id,
             "width": img.shape[1],
             "height": img.shape[0],
-            "file_name": "{}.jpg".format(name[15:])
+            "file_name": "{}.jpg".format(file_name[15:])
     }
 
     # Decide final class for annotation
